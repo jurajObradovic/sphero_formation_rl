@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:macro  name="sphero_dummy" params="name parent l r incr">
+
+            <!-- ros_control plugin -->
+              <gazebo>
+                <plugin name="gazebo_ros_control"
+                        filename="libgazebo_ros_control.so">
+                  <robotParam>/robot_description</robotParam>
+                  <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+                </plugin>
+              </gazebo>
+
+
+
+          <link name="${name}_base_direction_link">
+            <inertial>
+              <mass value="0.2"/>
+              <origin rpy="0 1.5707 1.5707" xyz="0 0 0"/>
+               <cylinder_inertia mass="0.2" r="${r}" l="${l}" />
+            </inertial>
+            <collision name="link_right_wheel_collision">
+              <origin rpy="0 1.5707 1.5707" xyz="0 0 0"/>
+              <geometry>
+                <cylinder length="${l}" radius="${r + incr}"/>
+              </geometry>
+            </collision>
+            <visual>
+              <origin rpy="0 0 0" xyz="0 0.0 0.0" />
+              <geometry>
+                <mesh filename="package://sphero_description/meshes/Sphero_Textured.dae" scale="1.3 1.3 1.3"/>
+              </geometry>
+            </visual>
+          </link>
+
+          <joint name="direction_joint" type="continuous">
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0" />
+            <parent link="${parent}" />
+            <child link="${name}_base_direction_link" />
+            <axis xyz="0 1 0" />
+            <limit effort="1000.0" velocity="100.0" />
+          </joint>
+
+        <transmission name="direction_joint_trans">
+          <type>transmission_interface/SimpleTransmission</type>
+          <joint name="direction_joint">
+            <hardwareInterface>EffortJointInterface</hardwareInterface>
+          </joint>
+          <actuator name="direction_jointMotor">
+            <hardwareInterface>EffortJointInterface</hardwareInterface>
+            <mechanicalReduction>1</mechanicalReduction>
+          </actuator>
+        </transmission>
+
+    </xacro:macro >
+
+</robot>

@@ -1,0 +1,37 @@
+<launch>  
+
+    <arg name="gui" default="true"/>
+
+   <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="use_sim_time" value="false"/>
+    <arg name="debug" value="false"/>
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="headless" value="false"/>
+    <arg name="verbose" value="false"/>
+    <arg name="paused" value="false"/>
+  </include> 
+   <param name="robot_description" command="$(find xacro)/xacro.py '$(find sphero_formation_rl)/urdf/sphero.xacro'"/>
+
+     <rosparam file="$(find sphero_formation_rl)/config/sphero_description_control.yaml"
+            command="load"/>
+
+   <group ns="sphero1">
+    <param name="tf_prefix" value="sphero1" />
+      <include file="$(find sphero_formation_rl)/launch/spawn.launch" >
+      <arg name="x" value="2"/>
+      <arg name="y" value="1"/>
+      <arg name="robot_name" value="sphero1"/>
+      </include>
+  </group>
+
+<!--    <group ns="sphero2">
+    <param name="tf_prefix" value="sphero2_tf" />
+      <include file="$(find sphero_formation_rl)/launch/spawn.launch" >
+      <arg name="x" value="2"/>
+      <arg name="y" value="0"/>
+      <arg name="robot_name" value="sphero2"/>
+      </include>
+  </group> -->
+
+</launch>
+

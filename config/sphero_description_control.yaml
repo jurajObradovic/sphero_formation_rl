@@ -1,0 +1,25 @@
+sphero1:
+  # Publish all joint states -----------------------------------
+  # Creates the /joint_states topic necessary in ROS
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 50
+
+  # Effort Controllers ---------------------------------------
+  direction_joint_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: direction_joint
+    pid: {p: 0.0, i: 0.0, d: 0.0}
+    
+sphero2:
+  # Publish all joint states -----------------------------------
+  # Creates the /joint_states topic necessary in ROS
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 50
+
+  # Effort Controllers ---------------------------------------
+  direction_joint_position_controller:
+    type: effort_controllers/JointPositionController
+    joint: direction_joint
+    pid: {p: 0.0, i: 0.0, d: 0.0}
