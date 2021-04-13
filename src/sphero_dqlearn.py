@@ -36,10 +36,10 @@ class Agent:
         self.epsilon = 1.0  # Epsilon start value
         self.epsilonDecay = 0.99  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
-        self.batchSize = 64  # Size of a miniBatch
-        self.learnStart = 100000  # Start to train model from this step
+        self.batchSize = 2  # Size of a miniBatch(64)
+        self.learnStart = 600  # Start to train model from this step(100000)
         self.memory = deque(maxlen=200000)  # Main memory to keep batches
-        self.timeOutLim = 1000  # Maximum step size for each episode(1400)
+        self.timeOutLim = 500  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path
 
         self.onlineModel = self.initNetwork()

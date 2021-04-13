@@ -39,8 +39,10 @@ class AgentPosController():
         model_state_msg.model_name = self.agent_model_name
             # maze 1
         xy_list = [
-            [-2, 2], [-2, 1], [2, -2], [2, 2],
-            [-1, 2], [-1, 1], [1, -1], [1, 2]
+            [0, 0], [0, 1], [0, 2], [0, 3],
+            [1, 0], [1, 1], [1, 2], [1, 3],
+            [2, 0], [2, 1], [2, 2], [2, 3],
+            [3, 0], [3, 1], [3, 2], [3, 3],
         ]
 
         # Get random position for agent
@@ -142,8 +144,9 @@ class GoalController():
         time.sleep(0.5)
 
         goal_xy_list = [
-                [-1.5, 0.5], [-1.5, 1.5], [-0.5, 0.5], [-0.5, 1.5],
-                [1.5, 0.5], [1.5, 1.5], [0.5, 0.5], [0.5, 1.5]
+                [0.5, 0.5], [0.5, 1.5], [0.5, 2.5],
+                [1.5, 0.5], [1.5, 1.5], [1.5, 2.5],
+                [2.5, 0.5], [2.5, 1.5], [2.5, 2.5]
         ]
 
         # Check last goal position not same with new goal
