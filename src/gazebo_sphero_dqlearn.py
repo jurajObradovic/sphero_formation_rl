@@ -250,7 +250,7 @@ class SpheroGymEnv():
         return yaw, posX, posY of robot known as Pos2D
         '''
         try:
-            odomData = rospy.wait_for_message('/sphero1/odom', Odometry, timeout=100)
+            odomData = rospy.wait_for_message('/sphero1/odom', Odometry, timeout=5)
             odomData = odomData.pose.pose
             quat = odomData.orientation
             quatTuple = (
@@ -441,7 +441,7 @@ class SpheroGymEnv():
         Reset bot position
 
         returns state as np.array
-
+targetDistance
         State contains:
         heading, distance
         '''

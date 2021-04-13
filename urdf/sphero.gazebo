@@ -30,7 +30,7 @@
   </gazebo>  -->
 
  <gazebo>
-    <plugin name="omni_steering" filename="libgazebo_ros_planar_move.so">
+    <plugin name="omni_steering" filename="libgazebo_sphero_controller.so">
       <commandTopic>cmd_vel</commandTopic>
       <odometryTopic>odom</odometryTopic>
       <odometryFrame>odom</odometryFrame>
