@@ -15,7 +15,6 @@ from geometry_msgs.msg import Point
 
 from nav_msgs.msg import Odometry
 import tf
-from sensor_msgs.msg import LaserScan
 from std_srvs.srv import Empty
 
 
@@ -189,7 +188,7 @@ class SpheroGymEnv():
             '/gazebo/reset_simulation', Empty)
 
         self.minCrashRange = 0.2  # Asume crash below this distance
-        self.stateSize = 2  # Laser(arr), heading, distance, obstacleMinRange, obstacleAngle
+        self.stateSize = 2  # argetAngle, distance
         self.actionSize = 5  # Size of the robot's actions
 
         self.targetDistance = 0  # Distance to target
@@ -233,17 +232,6 @@ class SpheroGymEnv():
         except Exception:
             print("/gazebo/reset_simulation service call failed")
 
-    # def getLaserData(self):
-    #     '''
-    #     ROS callback function
-        
-    #     return laser scan in 2D list
-    #     '''
-    #     try:
-    #         laserData = rospy.wait_for_message('/scan', LaserScan, timeout=5)
-    #         return laserData
-    #     except Exception as e:
-    #         rospy.logfatal("Error to get laser data " + str(e))
 
     def getOdomData(self):
         '''
@@ -254,8 +242,9 @@ class SpheroGymEnv():
         '''
         try:
             odomData = rospy.wait_for_message('/sphero1/odom', Odometry, timeout=5)
-            odomData = odomData.pose.pose
-            quat = odomData.orientation
+            odomPoseData = odomData.pose.pose
+            odomTwistData = odomData.twist.twist
+            quat = odomPoseData.orientation
             quatTuple = (
                 quat.x,
                 quat.y,
@@ -264,29 +253,33 @@ class SpheroGymEnv():
             )
             roll, pitch, yaw = tf.transformations.euler_from_quaternion(
                 quatTuple)
-            robotX = odomData.position.x
-            robotY = odomData.position.y
-            return yaw, robotX, robotY
+            robotX = odomPoseData.position.x
+            robotY = odomPoseData.position.y
+            robotVelX = odomTwistData.linear.x
+            robotVelY = odomTwistData.linear.y
+            return yaw, robotX, robotY, robotVelX, robotVelY
 
         except Exception as e:
             rospy.logfatal("Error to get odom data " + str(e))
 
-    def calcHeadingAngle(self, targetPointX, targetPointY, yaw, robotX, robotY):
-        '''
-        Calculate heading angle from robot to target
 
-        return angle in float
+
+    def calcTargetAngle(self, targetPointX, targetPointY, robotX, robotY):
+        '''
+        Calculate angle from robot to target
+
+        return angle in float [0, 2PI]
+
+
         '''
         targetAngle = math.atan2(targetPointY - robotY, targetPointX - robotX)
 
-        heading = targetAngle - yaw
-        if heading > math.pi:
-            heading -= 2 * math.pi
+        if(targetAngle < 0):
+            targetAngle = 2 * math.pi + targetAngle
 
-        elif heading < -math.pi:
-            heading += 2 * math.pi
+        return round(targetAngle, 5)
 
-        return round(heading, 2)
+
 
     def calcDistance(self, x1, y1, x2, y2):
         '''
@@ -298,38 +291,26 @@ class SpheroGymEnv():
 
     def calculateState(self, odomData):
         '''
-        Modify laser data
-        Calculate heading angle
+        Calculate targetAngle angle
         Calculate distance to target
 
         returns state as np.array
 
         State contains:
-        heading, distance
+        targetAngle, distance
         '''
 
-        heading = self.calcHeadingAngle(self.targetPointX, self.targetPointY, *odomData)
-        _, robotX, robotY = odomData
+        _, robotX, robotY, robotVelX, robotVelY = odomData
+        targetAngle = self.calcTargetAngle(self.targetPointX, self.targetPointY, robotX, robotY)
         distance = self.calcDistance(
             robotX, robotY, self.targetPointX, self.targetPointY)
 
         # isCrash = False  # If robot hit to an obstacle
-        # laserData = list(laserData.ranges)
 
-        # for i in range(len(laserData)):
-        #     if (self.minCrashRange > laserData[i] > 0):
-        #         isCrash = True
-        #     if np.isinf(laserData[i]):
-        #         laserData[i] = self.laserMaxRange
-        #     if np.isnan(laserData[i]):
-        #         laserData[i] = 0
 
-        # obstacleMinRange = round(min(laserData), 2)
-        # obstacleAngle = np.argmin(laserData)
+       # return [targetAngle, distance, obstacleMinRange, obstacleAngle], isCrash
 
-       # return laserData + [heading, distance, obstacleMinRange, obstacleAngle], isCrash
-
-        return [heading, distance]
+        return [targetAngle, distance]
 
 
     def step(self, action):
@@ -343,7 +324,7 @@ class SpheroGymEnv():
         returns state as np.array
 
         State contains:
-        heading, distance, reward, done
+        targetAngle, distance, reward, done
         '''
         self.unpauseGazebo()
 
@@ -351,43 +332,43 @@ class SpheroGymEnv():
         maxAngularVel = 1.5
         angVel = ((self.actionSize - 1)/2 - action) * maxAngularVel / 2
 
-        velCmd = Twist()
-        velCmd.linear.x = 0.2
-        velCmd.angular.z = angVel
+        # velCmd = Twist()
+        # velCmd.linear.x = 0.1
+        # velCmd.linear.y = 0.0
 
-        self.velPub.publish(velCmd)
+        # self.velPub.publish(velCmd)
 
         # More basic actions
         
-        if action == 0: #BRAKE LEFT
+        if action == 0: #STAY
             velCmd = Twist()
-            velCmd.linear.x = 0.17
-            velCmd.angular.z = 1.6
+            velCmd.linear.x = 0.0
+            velCmd.linear.y = 0.0
             self.velPub.publish(velCmd)
-        elif action == 1: #LEFT
+        elif action == 1: #FORWARD
             velCmd = Twist()
-            velCmd.linear.x = 0.17
-            velCmd.angular.z = 0.8
+            velCmd.linear.x = 1.0
+            velCmd.linear.y = 0.0
             self.velPub.publish(velCmd)
-        elif action == 2: #FORWARD
+        elif action == 2: #RIGHT
             velCmd = Twist()
-            velCmd.linear.x = 0.17
-            velCmd.angular.z = 0.0
+            velCmd.linear.x = 0.0
+            velCmd.linear.y = 1.0
             self.velPub.publish(velCmd)
-        elif action == 3: #RIGHT
+        elif action == 3: #BACK
             velCmd = Twist()
-            velCmd.linear.x = 0.17
-            velCmd.angular.z = -0.8
+            velCmd.linear.x = -1.0
+            velCmd.linear.y = 0.0
             self.velPub.publish(velCmd)
-        elif action == 4: #BRAKE RIGHT
+        elif action == 4: #RIGHT
             velCmd = Twist()
-            velCmd.linear.x = 0.17
-            velCmd.angular.z = -1.6
+            velCmd.linear.x = 0.0
+            velCmd.linear.y = -1.0
             self.velPub.publish(velCmd)       
 
 
         # Observe
- #       laserData = self.getLaserData()
+
         odomData = self.getOdomData()
 
         self.pauseGazebo()
@@ -418,15 +399,26 @@ class SpheroGymEnv():
             # Neither reached to goal nor crashed calc reward for action
             yawReward = []
             currentDistance = state[1]
-            heading = state[0]
+            targetAngle = state[0]
 
             # Calc reward 
             # reference https://emanual.robotis.com/docs/en/platform/turtlebot3/ros2_machine_learning/
 
-            for i in range(self.actionSize):
-                angle = -math.pi / 4 + heading + (math.pi / 8 * i) + math.pi / 2
-                tr = 1 - 4 * math.fabs(0.5 - math.modf(0.25 + 0.5 * angle % (2 * math.pi) / math.pi)[0])
-                yawReward.append(tr)
+            # for i in range(self.actionSize):
+            #     angle = -math.pi / 4 + targetAngle + (math.pi / 8 * i) + math.pi / 2
+            #     tr = 1 - 4 * math.fabs(0.5 - math.modf(0.25 + 0.5 * angle % (2 * math.pi) / math.pi)[0])
+            #     yawReward.append(tr)
+
+
+            yawReward.append(-1)  # small negative reward for staying in place
+
+
+            for i in range(self.actionSize-1):
+                 angle = math.fabs(targetAngle - float(i) * math.pi / 2.0)
+                 actionsYawReward = 5 * ((1-(math.fabs((math.modf(angle / math.pi)[1] * (2.0 * math.pi)) - angle) / math.pi))-0.5)
+                 yawReward.append(actionsYawReward)
+
+
 
             try:
                 distanceRate = 2 ** (currentDistance / self.targetDistance)
@@ -435,6 +427,11 @@ class SpheroGymEnv():
                 distanceRate = 2 ** (currentDistance // self.targetDistance)
                 
             reward = ((round(yawReward[action] * 5, 2)) * distanceRate)
+            # print((round(yawReward[action] * 5, 2)))
+            # print("distanceRate")
+            # print(distanceRate);
+            # print("reward")
+            # print(reward)
 
         return np.asarray(state), reward, done
 
@@ -446,7 +443,7 @@ class SpheroGymEnv():
         returns state as np.array
 targetDistance
         State contains:
-        heading, distance
+        targetAngle, distance
         '''
         self.resetGazebo()
 
@@ -471,7 +468,6 @@ targetDistance
 
         # Unpause simulation to make observation
         self.unpauseGazebo()
-    #    laserData = self.getLaserData()
         odomData = self.getOdomData()
         self.pauseGazebo()
 

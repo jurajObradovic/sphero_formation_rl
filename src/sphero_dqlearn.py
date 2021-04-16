@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+from numba import jit, cuda
 from gazebo_sphero_dqlearn import SpheroGymEnv
 
 import time
@@ -16,12 +16,16 @@ import matplotlib.pyplot as plt
 import sys
 import signal
 
+
+
 LIVE_PLOT = False  # Rise a new window to plot process while training
+
 
 class Agent:
     '''
     Main class for agent
     '''
+    
     def __init__(self, stateSize, actionSize):
         self.isTrainActive = True  # Train model (Make it False for just testing)
         self.loadModel = False  # Load model from file
@@ -36,10 +40,10 @@ class Agent:
         self.epsilon = 1.0  # Epsilon start value
         self.epsilonDecay = 0.99  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
-        self.batchSize = 2  # Size of a miniBatch(64)
-        self.learnStart = 600  # Start to train model from this step(100000)
+        self.batchSize = 64  # Size of a miniBatch(64)
+        self.learnStart = 100000  # Start to train model from this step(100000)
         self.memory = deque(maxlen=200000)  # Main memory to keep batches
-        self.timeOutLim = 500  # Maximum step size for each episode(1400)
+        self.timeOutLim = 400  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path
 
         self.onlineModel = self.initNetwork()
@@ -109,7 +113,7 @@ class Agent:
         Append state to replay mem
         '''
         self.memory.append((state, action, reward, nextState, done))
-
+    
     def trainModel(self, target=False):
         '''
         Train model with randomly choosen minibatches
@@ -128,18 +132,18 @@ class Agent:
             nextState = miniBatch[i][3]
             done = miniBatch[i][4]
 
-            qValue = self.onlineModel.predict(state.reshape(1, len(state)))
-            self.qValue = qValue
+            qValue = self.onlineModel(state.reshape(1, len(state)))
+            self.qValue = qValue.numpy()
 
             if target:
-                nextTarget = self.targetModel.predict(nextState.reshape(1, len(nextState)))
+                nextTarget = self.targetModel(nextState.reshape(1, len(nextState)))
             else:
-                nextTarget = self.onlineModel.predict(nextState.reshape(1, len(nextState)))
+                nextTarget = self.onlineModel(nextState.reshape(1, len(nextState)))
 
-            nextQValue = self.calcQ(reward, nextTarget, done)
+            nextQValue = self.calcQ(reward, nextTarget.numpy(), done)
 
             xBatch = np.append(xBatch, np.array([state.copy()]), axis=0)
-            ySample = qValue.copy()
+            ySample = qValue.numpy().copy()
 
             ySample[0][action] = nextQValue
             yBatch = np.append(yBatch, np.array([ySample[0]]), axis=0)
@@ -201,6 +205,7 @@ if __name__ == '__main__':
     startTime = time.time()
     for episode in range(agent.loadEpisodeFrom + 1, agent.episodeCount):
         done = False
+
         state = env.reset()
         score = 0
         total_max_q = 0
