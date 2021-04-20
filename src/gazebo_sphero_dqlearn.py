@@ -4,7 +4,7 @@ import time
 import numpy as np
 import math
 
-import random
+from random import seed, random, randint, choice
 
 from gazebo_msgs.srv import SpawnModel, DeleteModel, SetModelState
 
@@ -46,7 +46,7 @@ class AgentPosController():
 
         # Get random position for agent
         pose = Pose()
-        pose.position.x, pose.position.y = random.choice(xy_list)
+        pose.position.x, pose.position.y = choice(xy_list)
 
         model_state_msg.pose = pose
         model_state_msg.twist = Twist()
@@ -150,7 +150,7 @@ class GoalController():
 
         # Check last goal position not same with new goal
         while True:
-            self.goal_position.position.x, self.goal_position.position.y = random.choice(goal_xy_list)
+            self.goal_position.position.x, self.goal_position.position.y = choice(goal_xy_list)
 
             if self.last_goal_x != self.goal_position.position.x:
                 if self.last_goal_y != self.goal_position.position.y:
@@ -171,6 +171,57 @@ class GoalController():
         return self.goal_position.position.x, self.goal_position.position.y
 
 
+
+class LeaderAgent():
+
+
+    def odometry_callback(self, data):
+
+        self.positionX = data.pose.pose.position.x
+        self.positionY = data.pose.pose.position.y
+
+    def getPosition(self):
+        return self.positionX, self.positionY
+
+
+    def calculateRandomVelocity(self):
+
+        self.duration = randint(10, 50); #duration of one robot behavior in steps
+        self.currentVelocity = self.angularVelocities[randint(0, 3)];
+
+    def moveAgentRandomly(self):
+
+        twistToPublish = Twist()
+        twistToPublish.linear.x = 0.5
+        twistToPublish.angular.z = self.currentVelocity
+        if self.duration == 0:
+            self.calculateRandomVelocity()
+        else:
+            self.duration -= 1
+        self.pub.publish(twistToPublish)
+
+    def __init__(self):
+
+        self.pub = rospy.Publisher("/sphero2/cmd_vel", Twist, queue_size = 1 )
+        rospy.sleep(0.2)
+
+        rospy.Subscriber("/sphero2/odom", Odometry, self.odometry_callback, queue_size = 1)
+
+        self.angularVelocities = [-1 ,-0.75, 0.75, 1]
+
+        self.currentVelocity = 0
+
+        self.duration = 0
+
+        self.positionX = 0
+
+        self.positionY = 0
+
+
+
+   
+
+
 class SpheroGymEnv():
     '''
     Main Gazebo environment class
@@ -189,7 +240,7 @@ class SpheroGymEnv():
 
         self.minCrashRange = 0.2  # Asume crash below this distance
         self.stateSize = 2  # argetAngle, distance
-        self.actionSize = 5  # Size of the robot's actions
+        self.actionSize = 9  # Size of the robot's actions
 
         self.targetDistance = 0  # Distance to target
 
@@ -200,6 +251,7 @@ class SpheroGymEnv():
         self.isTargetReached = True
         self.goalCont = GoalController()
         self.agentController = AgentPosController()
+        self.leaderAgent = LeaderAgent()
 
 
     def pauseGazebo(self):
@@ -313,7 +365,7 @@ class SpheroGymEnv():
         return [targetAngle, distance]
 
 
-    def step(self, action):
+    def step(self, action, targetPositionX, targetPositionY):
         '''
         Act in envrionment
         After action return new state
@@ -327,6 +379,11 @@ class SpheroGymEnv():
         targetAngle, distance, reward, done
         '''
         self.unpauseGazebo()
+
+        self.targetPointX = targetPositionX;
+        self.targetPointY = targetPositionY;
+
+
 
         # Move
         maxAngularVel = 1.5
@@ -350,21 +407,41 @@ class SpheroGymEnv():
             velCmd.linear.x = 1.0
             velCmd.linear.y = 0.0
             self.velPub.publish(velCmd)
-        elif action == 2: #RIGHT
+        elif action == 2: #FORWARD-RIGHT
+            velCmd = Twist()
+            velCmd.linear.x = 0.7071
+            velCmd.linear.y = 0.7071
+            self.velPub.publish(velCmd)
+        elif action == 3: #RIGHT
             velCmd = Twist()
             velCmd.linear.x = 0.0
             velCmd.linear.y = 1.0
             self.velPub.publish(velCmd)
-        elif action == 3: #BACK
+        elif action == 4: #BACK-RIGHT
+            velCmd = Twist()
+            velCmd.linear.x = -0.7071
+            velCmd.linear.y = 0.7071
+            self.velPub.publish(velCmd)
+        elif action == 5: #BACK
             velCmd = Twist()
             velCmd.linear.x = -1.0
             velCmd.linear.y = 0.0
             self.velPub.publish(velCmd)
-        elif action == 4: #RIGHT
+        elif action == 6: #BACK_LEFT
+            velCmd = Twist()
+            velCmd.linear.x = -0.7071
+            velCmd.linear.y = -0.7071
+            self.velPub.publish(velCmd)   
+        elif action == 7: #LEFT
             velCmd = Twist()
             velCmd.linear.x = 0.0
             velCmd.linear.y = -1.0
-            self.velPub.publish(velCmd)       
+            self.velPub.publish(velCmd)     
+        elif action == 8: #FOWARD-LEFT
+            velCmd = Twist()
+            velCmd.linear.x = 0.7071
+            velCmd.linear.y = -0.7071
+            self.velPub.publish(velCmd)      
 
 
         # Observe
@@ -390,9 +467,11 @@ class SpheroGymEnv():
         if self.isTargetReached:
             # Reached to target
             rospy.logwarn("Reached to target!")
-            reward = 200
+            reward = 500
             # Calc new target point
-            self.targetPointX, self.targetPointY = self.goalCont.calcTargetPoint()
+            #self.targetPointX, self.targetPointY = self.goalCont.calcTargetPoint()
+            #self.targetPointX, self.targetPointY = self.leaderAgent.getPosition();
+
             self.isTargetReached = False
 
         else:
@@ -410,14 +489,14 @@ class SpheroGymEnv():
             #     yawReward.append(tr)
 
 
-            yawReward.append(-1)  # small negative reward for staying in place
+            yawReward.append(-3)  # small negative reward for staying in place
 
 
             for i in range(self.actionSize-1):
-                 angle = math.fabs(targetAngle - float(i) * math.pi / 2.0)
-                 actionsYawReward = 5 * ((1-(math.fabs((math.modf(angle / math.pi)[1] * (2.0 * math.pi)) - angle) / math.pi))-0.5)
+                 angle = math.fabs(targetAngle - float(i) * math.pi / 4.0)
+                 actionsYawReward = 10 * ((1-(math.fabs((math.modf(angle / math.pi)[1] * (2.0 * math.pi)) - angle) / math.pi))-0.625)
+                 actionsYawReward = round(actionsYawReward, 2)
                  yawReward.append(actionsYawReward)
-
 
 
             try:
@@ -425,17 +504,22 @@ class SpheroGymEnv():
             except Exception:
                 print("Overflow err CurrentDistance = ", currentDistance, " TargetDistance = ", self.targetDistance)
                 distanceRate = 2 ** (currentDistance // self.targetDistance)
+
+            if(distanceRate < 2):
+                distanceRate = 2
                 
             reward = ((round(yawReward[action] * 5, 2)) * distanceRate)
-            # print((round(yawReward[action] * 5, 2)))
-            # print("distanceRate")
-            # print(distanceRate);
-            # print("reward")
-            # print(reward)
+
+
+            print("action: ", action)
+            print("distanceRate: ",distanceRate)
+            print("yawReward: ",yawReward)
+            print ("reward: ", reward)
+
 
         return np.asarray(state), reward, done
 
-    def reset(self):
+    def reset(self, targetPositionX, targetPositionY):
         '''
         Reset the envrionment
         Reset bot position
@@ -446,6 +530,9 @@ targetDistance
         targetAngle, distance
         '''
         self.resetGazebo()
+
+        self.targetPointX = targetPositionX
+        self.targetPointY = targetPositionY
 
         while True:
             # Teleport bot to a random point
@@ -458,7 +545,8 @@ targetDistance
 
         if self.isTargetReached:
             while True:
-                self.targetPointX, self.targetPointY = self.goalCont.calcTargetPoint()
+ #               self.targetPointX, self.targetPointY = self.goalCont.calcTargetPoint()
+                #self.targetPointX, self.targetPointY = self.leaderAgent.getPosition()
                 if self.calcDistance(self.targetPointX, self.targetPointY, agentX, agentY) > self.minCrashRange:
                     self.isTargetReached = False
                     break

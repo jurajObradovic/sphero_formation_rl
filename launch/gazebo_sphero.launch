@@ -24,14 +24,14 @@
       </include>
   </group>
 
-<!--    <group ns="sphero2">
+  <group ns="sphero2">
     <param name="tf_prefix" value="sphero2_tf" />
       <include file="$(find sphero_formation_rl)/launch/spawn.launch" >
-      <arg name="x" value="2"/>
-      <arg name="y" value="0"/>
+      <arg name="x" value="0.0"/>
+      <arg name="y" value="1.5"/>
       <arg name="robot_name" value="sphero2"/>
       </include>
-  </group> -->
+  </group> 
 
 </launch>
 

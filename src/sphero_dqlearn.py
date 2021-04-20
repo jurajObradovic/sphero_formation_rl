@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from numba import jit, cuda
 from gazebo_sphero_dqlearn import SpheroGymEnv
+from leader_agent import LeaderAgent
 
 import time
 import os
@@ -38,12 +39,12 @@ class Agent:
         self.discountFactor = 0.99  # For qVal calculations
         self.learningRate = 0.0003  # For neural net model
         self.epsilon = 1.0  # Epsilon start value
-        self.epsilonDecay = 0.99  # Epsilon decay value
+        self.epsilonDecay = 0.995  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
         self.batchSize = 64  # Size of a miniBatch(64)
         self.learnStart = 100000  # Start to train model from this step(100000)
         self.memory = deque(maxlen=200000)  # Main memory to keep batches
-        self.timeOutLim = 400  # Maximum step size for each episode(1400)
+        self.timeOutLim = 300  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path
 
         self.onlineModel = self.initNetwork()
@@ -56,6 +57,7 @@ class Agent:
             os.mkdir(self.savePath)
         except Exception:
             pass
+
 
     def initNetwork(self):
         '''
@@ -183,14 +185,18 @@ if __name__ == '__main__':
     if LIVE_PLOT:
         score_plot = LivePlot()
 
-    env = SpheroGymEnv()  # Create environment
 
+
+    env = SpheroGymEnv()
     # get action and state sizes
     stateSize = env.stateSize
     actionSize = env.actionSize
 
     # Create an agent
     agent = Agent(stateSize, actionSize)
+
+    leaderAgent = LeaderAgent();
+
 
     # Load model from file if needed
     if agent.loadModel:
@@ -205,16 +211,20 @@ if __name__ == '__main__':
     startTime = time.time()
     for episode in range(agent.loadEpisodeFrom + 1, agent.episodeCount):
         done = False
-
-        state = env.reset()
+        targetPositionX, targetPositionY = leaderAgent.getPosition()
+        state = env.reset(targetPositionX, targetPositionY)
         score = 0
         total_max_q = 0
-
+        
         for step in range(1,999999):
-            action = agent.calcAction(state)
-            nextState, reward, done = env.step(action)
+            leaderAgent.moveAgentRandomly()
+            targetPositionX, targetPositionY = leaderAgent.getPosition()
 
-            if score+reward > 5000 or score+reward < -5000:
+            action = agent.calcAction(state)
+            nextState, reward, done = env.step(action, targetPositionX, targetPositionY)
+
+
+            if score+reward > 7000 or score+reward < -7000:
                 print("Error Score is too high or too low! Resetting...")
                 break
 
@@ -266,8 +276,8 @@ if __name__ == '__main__':
                 if LIVE_PLOT:
                     score_plot.update(episode, score, "Score", inform_text, updtScore=True)
 
-                paramKeys = ['epsilon']
-                paramValues = [agent.epsilon]
+                paramKeys = ['epsilon', 'score']
+                paramValues = [agent.epsilon, score]
                 paramDictionary = dict(zip(paramKeys, paramValues))
                 break
 
