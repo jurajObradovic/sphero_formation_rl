@@ -28,9 +28,9 @@ class Agent:
     '''
     
     def __init__(self, stateSize, actionSize):
-        self.isTrainActive = True  # Train model (Make it False for just testing)
-        self.loadModel = False  # Load model from file
-        self.loadEpisodeFrom = 0  # Load Xth episode from file
+        self.isTrainActive = False  # Train model (Make it False for just testing)
+        self.loadModel = True  # Load model from file
+        self.loadEpisodeFrom = 3100  # Load Xth episode from file
         self.episodeCount = 40000  # Total episodes
         self.stateSize = stateSize  # Step size get from env
         self.actionSize = actionSize  # Action size get from env
@@ -39,12 +39,12 @@ class Agent:
         self.discountFactor = 0.99  # For qVal calculations
         self.learningRate = 0.0003  # For neural net model
         self.epsilon = 1.0  # Epsilon start value
-        self.epsilonDecay = 0.995  # Epsilon decay value
+        self.epsilonDecay = 0.9995  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
         self.batchSize = 64  # Size of a miniBatch(64)
         self.learnStart = 100000  # Start to train model from this step(100000)
         self.memory = deque(maxlen=200000)  # Main memory to keep batches
-        self.timeOutLim = 300  # Maximum step size for each episode(1400)
+        self.timeOutLim = 200  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path
 
         self.onlineModel = self.initNetwork()
@@ -224,7 +224,7 @@ if __name__ == '__main__':
             nextState, reward, done = env.step(action, targetPositionX, targetPositionY)
 
 
-            if score+reward > 7000 or score+reward < -7000:
+            if score+reward > 10000 or score+reward < -10000:
                 print("Error Score is too high or too low! Resetting...")
                 break
 
@@ -276,8 +276,8 @@ if __name__ == '__main__':
                 if LIVE_PLOT:
                     score_plot.update(episode, score, "Score", inform_text, updtScore=True)
 
-                paramKeys = ['epsilon', 'score']
-                paramValues = [agent.epsilon, score]
+                paramKeys = ['epsilon', 'score', 'memory', 'time', 'averageQ']
+                paramValues = [agent.epsilon, score, len(agent.memory), h, avg_max_q]
                 paramDictionary = dict(zip(paramKeys, paramValues))
                 break
 

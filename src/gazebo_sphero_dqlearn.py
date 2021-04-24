@@ -427,7 +427,7 @@ class SpheroGymEnv():
             velCmd.linear.x = -1.0
             velCmd.linear.y = 0.0
             self.velPub.publish(velCmd)
-        elif action == 6: #BACK_LEFT
+        elif action == 6: #BACK-LEFT
             velCmd = Twist()
             velCmd.linear.x = -0.7071
             velCmd.linear.y = -0.7071
@@ -458,7 +458,7 @@ class SpheroGymEnv():
 
         distanceToTarget = state[1]
 
-        if distanceToTarget < 0.2:  # Reached to target
+        if distanceToTarget < 0.3:  # Reached to target
             self.isTargetReached = True
 
         # if isCrash:
@@ -467,7 +467,7 @@ class SpheroGymEnv():
         if self.isTargetReached:
             # Reached to target
             rospy.logwarn("Reached to target!")
-            reward = 500
+            reward = 50
             # Calc new target point
             #self.targetPointX, self.targetPointY = self.goalCont.calcTargetPoint()
             #self.targetPointX, self.targetPointY = self.leaderAgent.getPosition();
@@ -489,7 +489,7 @@ class SpheroGymEnv():
             #     yawReward.append(tr)
 
 
-            yawReward.append(-3)  # small negative reward for staying in place
+            yawReward.append(-1)  # small negative reward for staying in place
 
 
             for i in range(self.actionSize-1):
@@ -511,10 +511,27 @@ class SpheroGymEnv():
             reward = ((round(yawReward[action] * 5, 2)) * distanceRate)
 
 
-            print("action: ", action)
-            print("distanceRate: ",distanceRate)
-            print("yawReward: ",yawReward)
-            print ("reward: ", reward)
+            def actionSwitchToString(i):
+                switcher = {
+                    0: "STAY",
+                    1: "FORWARD",
+                    2: "FORWARD-RIGHT",
+                    3: "RIGHT",
+                    4: "BACK-RIGHT",
+                    5: "BACK",
+                    6: "BACK-LEFT",
+                    7: "LEFT",
+                    8: "FOWARD-LEFT"
+                }
+
+                return switcher.get(i, "INVALID")
+
+            actionString = actionSwitchToString(action);
+
+ #           print("reward: ", reward, "   action: ", actionString, "distanceToTarget: ", distanceToTarget)
+    
+
+
 
 
         return np.asarray(state), reward, done
