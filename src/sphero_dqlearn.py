@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from numba import jit, cuda
 from gazebo_sphero_dqlearn import SpheroGymEnv
-from leader_agent import LeaderAgent
+from secondary_agent import SecondaryAgent
 
 import time
 import os
@@ -28,9 +28,9 @@ class Agent:
     '''
     
     def __init__(self, stateSize, actionSize):
-        self.isTrainActive = False  # Train model (Make it False for just testing)
-        self.loadModel = True  # Load model from file
-        self.loadEpisodeFrom = 3100  # Load Xth episode from file
+        self.isTrainActive = True # Train model (Make it False for just testing)
+        self.loadModel = False  # Load model from file
+        self.loadEpisodeFrom = 0  # Load Xth episode from file
         self.episodeCount = 40000  # Total episodes
         self.stateSize = stateSize  # Step size get from env
         self.actionSize = actionSize  # Action size get from env
@@ -39,11 +39,11 @@ class Agent:
         self.discountFactor = 0.99  # For qVal calculations
         self.learningRate = 0.0003  # For neural net model
         self.epsilon = 1.0  # Epsilon start value
-        self.epsilonDecay = 0.9995  # Epsilon decay value
+        self.epsilonDecay = 0.9988  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
         self.batchSize = 64  # Size of a miniBatch(64)
-        self.learnStart = 100000  # Start to train model from this step(100000)
-        self.memory = deque(maxlen=200000)  # Main memory to keep batches
+        self.learnStart = 200000  # Start to train model from this step(100000)
+        self.memory = deque(maxlen=400000)  # Main memory to keep batches
         self.timeOutLim = 200  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path
 
@@ -181,6 +181,22 @@ class LivePlot():
         plt.clf()
 
 
+
+def updateObstaclesPositions(obstacleAgents):
+
+
+    obastacleAgentPositions = []  
+
+    for obstacleAgent in obstacleAgents: 
+        obstaclePoitionX, obstaclePositionY = obstacleAgent.getPosition()
+        obastacleAgentPositions.append([obstaclePoitionX, obstaclePositionY])
+
+
+    return obastacleAgentPositions
+
+
+
+
 if __name__ == '__main__':
     if LIVE_PLOT:
         score_plot = LivePlot()
@@ -195,7 +211,13 @@ if __name__ == '__main__':
     # Create an agent
     agent = Agent(stateSize, actionSize)
 
-    leaderAgent = LeaderAgent();
+
+    agentRandomPositionNumber = [1, 2, 3];
+    
+
+    leaderAgent = SecondaryAgent(2);
+    obstacleAgent1 = SecondaryAgent(3);
+    obstacleAgent2 = SecondaryAgent(4);
 
 
     # Load model from file if needed
@@ -211,17 +233,40 @@ if __name__ == '__main__':
     startTime = time.time()
     for episode in range(agent.loadEpisodeFrom + 1, agent.episodeCount):
         done = False
-        targetPositionX, targetPositionY = leaderAgent.getPosition()
-        state = env.reset(targetPositionX, targetPositionY)
+
+        obstacleAgentPositions =  updateObstaclesPositions([leaderAgent, obstacleAgent1, obstacleAgent2])
+        env.targetPointX, env.targetPointY = obstacleAgentPositions[0][0] + 0.3, obstacleAgentPositions[0][1];
+
+        env.obstaclePositions = obstacleAgentPositions;
+
+
+        random.shuffle(agentRandomPositionNumber);  #shuffle agent initial positions
+        leaderAgent.agentRandomPositionNumber = agentRandomPositionNumber[0]
+        obstacleAgent1.agentRandomPositionNumber = agentRandomPositionNumber[1]
+        obstacleAgent2.agentRandomPositionNumber = agentRandomPositionNumber[2]
+
+        state = env.reset()
+        leaderAgent.respawn();
+        obstacleAgent1.respawn();
+        obstacleAgent2.respawn();
         score = 0
         total_max_q = 0
+
         
         for step in range(1,999999):
+
+
             leaderAgent.moveAgentRandomly()
-            targetPositionX, targetPositionY = leaderAgent.getPosition()
+            obstacleAgent1.moveAgentRandomly()
+            obstacleAgent2.moveAgentRandomly()
+
+
+            obstacleAgentPositions =  updateObstaclesPositions([leaderAgent, obstacleAgent1, obstacleAgent2])
+            env.targetPointX, env.targetPointY = obstacleAgentPositions[0][0] + 0.3, obstacleAgentPositions[0][1];
+            env.obstaclePositions = obstacleAgentPositions;
 
             action = agent.calcAction(state)
-            nextState, reward, done = env.step(action, targetPositionX, targetPositionY)
+            nextState, reward, done = env.step(action)
 
 
             if score+reward > 10000 or score+reward < -10000:
@@ -271,7 +316,7 @@ if __name__ == '__main__':
                 m, s = divmod(int(time.time() - startTime), 60)
                 h, m = divmod(m, 60)
 
-                print('Ep: {} | AvgMaxQVal: {:.2f} | CScore: {:.2f} | Mem: {} | Epsilon: {:.2f} | Time: {}:{}:{}'.format(episode, avg_max_q, score, len(agent.memory), agent.epsilon, h, m, s))
+                print('Ep: {} | AvgMaxQVal: {:.2f} | CScore: {:.2f} | Mem: {} | Epsilon: {:.2f} | Time: {}:{}:{}'.format(episode, avg_max_q, score, sys.getsizeof(agent.memory), agent.epsilon, h, m, s))
                 
                 if LIVE_PLOT:
                     score_plot.update(episode, score, "Score", inform_text, updtScore=True)

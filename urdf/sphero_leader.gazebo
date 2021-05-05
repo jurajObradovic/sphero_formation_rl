@@ -3,7 +3,7 @@
 
   <arg name="robot_name" default ="sphero"/>
   <gazebo reference="link_chassis">
-    <material>Gazebo/White</material>
+    <material>Gazebo/Green</material>
   </gazebo>
   <gazebo reference="link_left_wheel">
     <material>Gazebo/Blue</material>

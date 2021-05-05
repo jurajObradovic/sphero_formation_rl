@@ -10,7 +10,10 @@
     <arg name="verbose" value="false"/>
     <arg name="paused" value="false"/>
   </include> 
-  <param name="robot_description" command="$(find xacro)/xacro.py '$(find sphero_formation_rl)/urdf/sphero.xacro'"/>
+  <param name="sphero1/robot_description" command="$(find xacro)/xacro.py '$(find sphero_formation_rl)/urdf/sphero.xacro'"/>
+  <param name="sphero2/robot_description" command="$(find xacro)/xacro.py '$(find sphero_formation_rl)/urdf/sphero_leader.xacro'"/>
+  <param name="sphero3/robot_description" command="$(find xacro)/xacro.py '$(find sphero_formation_rl)/urdf/sphero_obstacle.xacro'"/>
+  <param name="sphero4/robot_description" command="$(find xacro)/xacro.py '$(find sphero_formation_rl)/urdf/sphero_obstacle.xacro'"/>
 
   <rosparam file="$(find sphero_formation_rl)/config/sphero_description_control.yaml"
             command="load"/>
@@ -33,5 +36,24 @@
       </include>
   </group> 
 
+
+  <group ns="sphero3">
+    <param name="tf_prefix" value="sphero3_tf" />
+      <include file="$(find sphero_formation_rl)/launch/spawn.launch" >
+      <arg name="x" value="0.0"/>
+      <arg name="y" value="2.5"/>
+      <arg name="robot_name" value="sphero3"/>
+      </include>
+  </group> 
+
+
+    <group ns="sphero4">
+    <param name="tf_prefix" value="sphero4_tf" />
+      <include file="$(find sphero_formation_rl)/launch/spawn.launch" >
+      <arg name="x" value="0.0"/>
+      <arg name="y" value="0.5"/>
+      <arg name="robot_name" value="sphero4"/>
+      </include>
+  </group> 
 </launch>
 

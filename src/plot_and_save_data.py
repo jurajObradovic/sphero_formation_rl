@@ -7,7 +7,7 @@
 import json
 import matplotlib.pyplot as plt
 
-finalEpisode = 3100;
+finalEpisode = 2510;
 scoreList = []
 epsilonList =  []
 memoryList = []
@@ -17,7 +17,7 @@ timeList = []
 
 episodeCount = []
 for i in range(finalEpisode):
-	if(i % 10 == 0 and i != 0):
+	if(i % 10 == 0 and i != 0 ):
 		f = open('/tmp/spheroModel/' + str(i) + '.json')
 		data = json.load(f)
 
@@ -55,7 +55,7 @@ jsonForLater = {
 	'time': timeList
 }
 
-d = open("/home/juraj/Desktop/Diplomski/leaderFollow2.json", "w")
+d = open("/home/juraj/Desktop/Diplomski/leaderFollow4.json", "w")
 
 json.dump(jsonForLater, d)
 

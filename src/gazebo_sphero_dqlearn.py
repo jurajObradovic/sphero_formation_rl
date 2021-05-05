@@ -4,6 +4,9 @@ import time
 import numpy as np
 import math
 
+
+import itertools
+
 from random import seed, random, randint, choice
 
 from gazebo_msgs.srv import SpawnModel, DeleteModel, SetModelState
@@ -12,6 +15,7 @@ from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import Twist
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point
+from gazebo_msgs.srv import SetModelState
 
 from nav_msgs.msg import Odometry
 import tf
@@ -37,11 +41,10 @@ class AgentPosController():
         model_state_msg = ModelState()
         model_state_msg.model_name = self.agent_model_name
             # maze 1
+
+
         xy_list = [
-            [0, 0], [0, 1], [0, 2], [0, 3],
-            [1, 0], [1, 1], [1, 2], [1, 3],
-            [2, 0], [2, 1], [2, 2], [2, 3],
-            [3, 0], [3, 1], [3, 2], [3, 3],
+            [0.5, 0.5], [1.5, 0.5], [1.5, 1.5], [0.5, 1.5]
         ]
 
         # Get random position for agent
@@ -75,29 +78,41 @@ class AgentPosController():
     
         return pose.position.x, pose.position.y
 
-class GoalController():
-    """
-    This class controls target model and position
-    """
-    def __init__(self):
+
+
+class TargetController:
+
+    def __init__(self, targetPointX, targetPointY):
+
+        self.positionX = 0
+        self.positionY = 0
+
         self.model_path = "../models/gazebo/goal_sign/model.sdf"
         f = open(self.model_path, 'r')
         self.model = f.read()
-
-        self.goal_position = Pose()
-        self.goal_position.position.x = None  # Initial positions
-        self.goal_position.position.y = None
-        self.last_goal_x = self.goal_position.position.x
-        self.last_goal_y = self.goal_position.position.y
-
         self.model_name = 'goal_sign'
-        self.check_model = False  # This used to checking before spawn model if there is already a model
 
-    def respawnModel(self):
-        '''
-        Spawn model in Gazebo
-        '''
-        isSpawnSuccess = False
+        self.goal_position = Pose();
+        self.goal_position.position.x = 0  # Initial positions
+        self.goal_position.position.y = 0
+
+        self.targetPointX = targetPointX
+        self.targetPointY = targetPointY
+        self.check_model = False
+
+
+
+    def respawn (self):
+
+
+        self.goal_position.position.x = self.targetPointX
+        self.goal_position.position.y = self.targetPointY
+
+
+
+
+        isTeleportSuccess = False;
+
         for i in range(5):
             if not self.check_model:  # This used to checking before spawn model if there is already a model
                 try:
@@ -115,7 +130,6 @@ class GoalController():
         
         if not isSpawnSuccess:
             rospy.logfatal("Error when spawning the goal sign")
-        
 
     def deleteModel(self):
         '''
@@ -134,94 +148,6 @@ class GoalController():
             else:
                 break
 
-    def calcTargetPoint(self):
-        """
-        This function return a target point randomly for robot
-        """
-        self.deleteModel()
-        # Wait for deleting
-        time.sleep(0.5)
-
-        goal_xy_list = [
-                [0.5, 0.5], [0.5, 1.5], [0.5, 2.5],
-                [1.5, 0.5], [1.5, 1.5], [1.5, 2.5],
-                [2.5, 0.5], [2.5, 1.5], [2.5, 2.5]
-        ]
-
-        # Check last goal position not same with new goal
-        while True:
-            self.goal_position.position.x, self.goal_position.position.y = choice(goal_xy_list)
-
-            if self.last_goal_x != self.goal_position.position.x:
-                if self.last_goal_y != self.goal_position.position.y:
-                    break
-
-        # Spawn goal model
-        self.respawnModel()
-
-        self.last_goal_x = self.goal_position.position.x
-        self.last_goal_y = self.goal_position.position.y
-
-        # Inform user
-        rospy.logwarn("New goal position : " + str(self.goal_position.position.x) + " , " + str(self.goal_position.position.y))
-
-        return self.goal_position.position.x, self.goal_position.position.y
-
-    def getTargetPoint(self):
-        return self.goal_position.position.x, self.goal_position.position.y
-
-
-
-class LeaderAgent():
-
-
-    def odometry_callback(self, data):
-
-        self.positionX = data.pose.pose.position.x
-        self.positionY = data.pose.pose.position.y
-
-    def getPosition(self):
-        return self.positionX, self.positionY
-
-
-    def calculateRandomVelocity(self):
-
-        self.duration = randint(10, 50); #duration of one robot behavior in steps
-        self.currentVelocity = self.angularVelocities[randint(0, 3)];
-
-    def moveAgentRandomly(self):
-
-        twistToPublish = Twist()
-        twistToPublish.linear.x = 0.5
-        twistToPublish.angular.z = self.currentVelocity
-        if self.duration == 0:
-            self.calculateRandomVelocity()
-        else:
-            self.duration -= 1
-        self.pub.publish(twistToPublish)
-
-    def __init__(self):
-
-        self.pub = rospy.Publisher("/sphero2/cmd_vel", Twist, queue_size = 1 )
-        rospy.sleep(0.2)
-
-        rospy.Subscriber("/sphero2/odom", Odometry, self.odometry_callback, queue_size = 1)
-
-        self.angularVelocities = [-1 ,-0.75, 0.75, 1]
-
-        self.currentVelocity = 0
-
-        self.duration = 0
-
-        self.positionX = 0
-
-        self.positionY = 0
-
-
-
-   
-
-
 class SpheroGymEnv():
     '''
     Main Gazebo environment class
@@ -238,20 +164,25 @@ class SpheroGymEnv():
         self.reset_proxy = rospy.ServiceProxy(
             '/gazebo/reset_simulation', Empty)
 
-        self.minCrashRange = 0.2  # Asume crash below this distance
-        self.stateSize = 2  # argetAngle, distance
+        self.minCrashRange = 0.1  # Asume crash below this distance
+        self.stateSize = 8  # argetAngle, distance
         self.actionSize = 9  # Size of the robot's actions
 
         self.targetDistance = 0  # Distance to target
 
+        self.robotX = 0
+        self.robotY = 0
+
         self.targetPointX = 0  # Target Pos X
         self.targetPointY = 0  # Target Pos Y
 
+        self.obstaclePositions = np.zeros((3,2))
+
         # Means robot reached target point. True at beginning to calc random point in reset func
         self.isTargetReached = True
-        self.goalCont = GoalController()
+        self.isCrash = False
         self.agentController = AgentPosController()
-        self.leaderAgent = LeaderAgent()
+        self.TargetController = TargetController(self.targetPointX, self.targetPointY)
 
 
     def pauseGazebo(self):
@@ -305,18 +236,18 @@ class SpheroGymEnv():
             )
             roll, pitch, yaw = tf.transformations.euler_from_quaternion(
                 quatTuple)
-            robotX = odomPoseData.position.x
-            robotY = odomPoseData.position.y
+            self.robotX = odomPoseData.position.x
+            self.robotY = odomPoseData.position.y
             robotVelX = odomTwistData.linear.x
             robotVelY = odomTwistData.linear.y
-            return yaw, robotX, robotY, robotVelX, robotVelY
+            return yaw, self.robotX, self.robotY, robotVelX, robotVelY
 
         except Exception as e:
             rospy.logfatal("Error to get odom data " + str(e))
 
 
 
-    def calcTargetAngle(self, targetPointX, targetPointY, robotX, robotY):
+    def calcTargetAngle(self):
         '''
         Calculate angle from robot to target
 
@@ -324,7 +255,7 @@ class SpheroGymEnv():
 
 
         '''
-        targetAngle = math.atan2(targetPointY - robotY, targetPointX - robotX)
+        targetAngle = math.atan2(self.targetPointY - self.robotY, self.targetPointX - self.robotX)
 
         if(targetAngle < 0):
             targetAngle = 2 * math.pi + targetAngle
@@ -352,20 +283,24 @@ class SpheroGymEnv():
         targetAngle, distance
         '''
 
-        _, robotX, robotY, robotVelX, robotVelY = odomData
-        targetAngle = self.calcTargetAngle(self.targetPointX, self.targetPointY, robotX, robotY)
+        _, self.robotX, self.robotY, robotVelX, robotVelY = odomData
+        targetAngle = self.calcTargetAngle()
         distance = self.calcDistance(
-            robotX, robotY, self.targetPointX, self.targetPointY)
+            self.robotX, self.robotY, self.targetPointX, self.targetPointY)
 
         # isCrash = False  # If robot hit to an obstacle
 
 
+
+        obstaclePositionsToReturn = list(itertools.chain.from_iterable(self.obstaclePositions))
+
+
        # return [targetAngle, distance, obstacleMinRange, obstacleAngle], isCrash
 
-        return [targetAngle, distance]
+        return [targetAngle, distance] +  obstaclePositionsToReturn
 
 
-    def step(self, action, targetPositionX, targetPositionY):
+    def step(self, action):
         '''
         Act in envrionment
         After action return new state
@@ -378,22 +313,10 @@ class SpheroGymEnv():
         State contains:
         targetAngle, distance, reward, done
         '''
+
         self.unpauseGazebo()
 
-        self.targetPointX = targetPositionX;
-        self.targetPointY = targetPositionY;
 
-
-
-        # Move
-        maxAngularVel = 1.5
-        angVel = ((self.actionSize - 1)/2 - action) * maxAngularVel / 2
-
-        # velCmd = Twist()
-        # velCmd.linear.x = 0.1
-        # velCmd.linear.y = 0.0
-
-        # self.velPub.publish(velCmd)
 
         # More basic actions
         
@@ -453,44 +376,37 @@ class SpheroGymEnv():
         state = self.calculateState(odomData)
 
         done = False
-        # if isCrash:
-        #     done = True
 
         distanceToTarget = state[1]
 
-        if distanceToTarget < 0.3:  # Reached to target
+        if distanceToTarget < 0.1:  # Reached to target
             self.isTargetReached = True
 
-        # if isCrash:
-        #     reward = -150
+
+        for pos in self.obstaclePositions: #Crashed
+            if (self.calcDistance(pos[0], pos[1], self.robotX, self.robotY) < self.minCrashRange):
+                self.isCrash = True;
+
+
 
         if self.isTargetReached:
             # Reached to target
             rospy.logwarn("Reached to target!")
             reward = 50
-            # Calc new target point
-            #self.targetPointX, self.targetPointY = self.goalCont.calcTargetPoint()
-            #self.targetPointX, self.targetPointY = self.leaderAgent.getPosition();
-
             self.isTargetReached = False
-
+        elif self.isCrash:
+            #Crashed
+             rospy.logwarn("Crash!")
+             reward = -4000
+             done = True
+             self.isCrash = False
         else:
             # Neither reached to goal nor crashed calc reward for action
             yawReward = []
             currentDistance = state[1]
             targetAngle = state[0]
 
-            # Calc reward 
-            # reference https://emanual.robotis.com/docs/en/platform/turtlebot3/ros2_machine_learning/
-
-            # for i in range(self.actionSize):
-            #     angle = -math.pi / 4 + targetAngle + (math.pi / 8 * i) + math.pi / 2
-            #     tr = 1 - 4 * math.fabs(0.5 - math.modf(0.25 + 0.5 * angle % (2 * math.pi) / math.pi)[0])
-            #     yawReward.append(tr)
-
-
             yawReward.append(-1)  # small negative reward for staying in place
-
 
             for i in range(self.actionSize-1):
                  angle = math.fabs(targetAngle - float(i) * math.pi / 4.0)
@@ -528,15 +444,16 @@ class SpheroGymEnv():
 
             actionString = actionSwitchToString(action);
 
- #           print("reward: ", reward, "   action: ", actionString, "distanceToTarget: ", distanceToTarget)
-    
+        #print("reward: ", reward, "   action: ", actionString, "distanceToTarget: ", distanceToTarget)
+        #print("obstaclePositions: ", self.obstaclePositions);
+        #print("state:", self.targetPointX, self.targetPointY);    
 
 
 
 
         return np.asarray(state), reward, done
 
-    def reset(self, targetPositionX, targetPositionY):
+    def reset(self):
         '''
         Reset the envrionment
         Reset bot position
@@ -548,8 +465,6 @@ targetDistance
         '''
         self.resetGazebo()
 
-        self.targetPointX = targetPositionX
-        self.targetPointY = targetPositionY
 
         while True:
             # Teleport bot to a random point

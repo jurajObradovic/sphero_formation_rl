@@ -2,7 +2,7 @@
 <robot name="sphero" xmlns:xacro="http://www.ros.org/wiki/xacro">
   
   <xacro:include filename="$(find sphero_formation_rl)/urdf/materials.xacro" />
-  <xacro:include filename="$(find sphero_formation_rl)/urdf/sphero.gazebo" >
+  <xacro:include filename="$(find sphero_formation_rl)/urdf/sphero_obstacle.gazebo" >
   </xacro:include>
   <xacro:include filename="$(find sphero_formation_rl)/urdf/macros.xacro" />
   <xacro:include filename="$(find sphero_formation_rl)/urdf/sphero_dummy.xacro" />
