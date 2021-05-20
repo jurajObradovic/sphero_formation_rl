@@ -7,17 +7,19 @@
 import json
 import matplotlib.pyplot as plt
 
-finalEpisode = 2510;
+finalEpisode = 1571;
 scoreList = []
 epsilonList =  []
 memoryList = []
 averageQList = []
 timeList = []
+numOfCrashes = []
+numOfTargets = []
 
 
 episodeCount = []
 for i in range(finalEpisode):
-	if(i % 10 == 0 and i != 0 ):
+	if(i % 10 == 0 and i != 0 and i != 930 ):
 		f = open('/tmp/spheroModel/' + str(i) + '.json')
 		data = json.load(f)
 
@@ -26,6 +28,8 @@ for i in range(finalEpisode):
 		memoryList.append(data["memory"])
 		averageQList.append(data["averageQ"])
 		timeList.append(data["time"])
+		numOfCrashes.append(data["numOfCrashes"])
+		numOfTargets.append(data["numOfTargets"])
 
 		episodeCount.append(i)
 		f.close()
@@ -33,15 +37,19 @@ for i in range(finalEpisode):
 
 #Ploting data
 
-fig, axs = plt.subplots(2, 2)
+fig, axs = plt.subplots(2, 3)
 axs[0,0].plot(episodeCount, scoreList, "tab:blue")
 axs[0,0].set_title("Reward")
-axs[0,1].plot(episodeCount, epsilonList, "tab:green")
+axs[0,1].plot(episodeCount, epsilonList, "tab:purple")
 axs[0,1].set_title("Epsilon")
-axs[1,0].plot(episodeCount, memoryList, "tab:purple")
+axs[1,0].plot(episodeCount, memoryList, "tab:brown")
 axs[1,0].set_title("Memory")
-axs[1,1].plot(episodeCount, averageQList,"tab:red")
+axs[1,1].plot(episodeCount, averageQList,"tab:orange")
 axs[1,1].set_title("Average max Q-value")
+axs[1,2].plot(episodeCount, numOfCrashes,"tab:red")
+axs[1,2].set_title("Number of crashes in 10 episodes")
+axs[0,2].plot(episodeCount, numOfTargets,"tab:green")
+axs[0,2].set_title("Number of times robot reached the target in 10 episodes")
 plt.show()
 
 
@@ -52,7 +60,9 @@ jsonForLater = {
 	'epsilon': epsilonList,
 	'memory': memoryList,
 	'averageQ': averageQList,
-	'time': timeList
+	'time': timeList,
+	'numOfCrashes': numOfCrashes,
+	'numOfTargets': numOfTargets
 }
 
 d = open("/home/juraj/Desktop/Diplomski/leaderFollow4.json", "w")

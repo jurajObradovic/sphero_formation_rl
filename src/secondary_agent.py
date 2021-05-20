@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import rospy
+import time
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from gazebo_msgs.msg import ModelState
@@ -34,7 +35,6 @@ class SecondaryAgent():
 			xy_list = [[0, 2], [1, 2], [2, 2]]
 
 
-
 		pose = Pose();
 		pose.position.x, pose.position.y = choice(xy_list)
 
@@ -64,6 +64,8 @@ class SecondaryAgent():
 			rospy.logfatal("Error when teleporting agent")
 			return "Err", "Err"
 
+		self.positionX = pose.position.x
+		self.positionY = pose.position.y
 
 
 	def getPosition(self):
@@ -84,8 +86,6 @@ class SecondaryAgent():
 		else:
 			self.duration -= 1
 		self.pub.publish(twistToPublish)
-
-
 
 
 	def __init__(self, agentNumber):
