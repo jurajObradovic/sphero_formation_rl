@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import rospy
 import time
+import math
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from gazebo_msgs.msg import ModelState
@@ -73,7 +74,7 @@ class SecondaryAgent():
 
 	def calculateRandomVelocity(self):
 
-		self.duration = randint(10, 50); #duration of one robot behavior in steps
+		self.durationRandom = randint(10, 50); #durationRandom of one robot behavior in steps
 		self.currentVelocity = self.angularVelocities[randint(0, 3)];
 
 	def moveAgentRandomly(self):
@@ -81,10 +82,21 @@ class SecondaryAgent():
 		twistToPublish = Twist()
 		twistToPublish.linear.x = 0.3
 		twistToPublish.angular.z = self.currentVelocity
-		if self.duration == 0:
+		if self.durationRandom == 0:
 			self.calculateRandomVelocity()
 		else:
-			self.duration -= 1
+			self.durationRandom -= 1
+		self.pub.publish(twistToPublish)
+
+
+
+	def moveAgentCircle(self):
+
+
+		twistToPublish = Twist()
+		twistToPublish.linear.x = 0.3;
+		twistToPublish.angular.z = 0.5;
+
 		self.pub.publish(twistToPublish)
 
 
@@ -102,11 +114,15 @@ class SecondaryAgent():
 
 		self.currentVelocity = 0
 
-		self.duration = 0
+		self.durationRandom = 0
+
+		self.durationCircular = 0
 
 		self.positionX = 0
 
 		self.positionY = 0
+
+
 
 
 if __name__ == "__main__":

@@ -28,9 +28,9 @@ class Agent:
     '''
     
     def __init__(self, stateSize, actionSize):
-        self.isTrainActive = False # Train model (Make it False for just testing)
-        self.loadModel = True# Load model from file
-        self.loadEpisodeFrom = 700  # Load Xth episode from file
+        self.isTrainActive = True # Train model (Make it False for just testing)
+        self.loadModel = False# Load model from file
+        self.loadEpisodeFrom = 0  # Load Xth episode from file
         self.episodeCount = 40000  # Total episodes
         self.stateSize = stateSize  # Step size get from env
         self.actionSize = actionSize  # Action size get from env
@@ -39,12 +39,12 @@ class Agent:
         self.discountFactor = 0.99  # For qVal calculations
         self.learningRate = 0.0003  # For neural net model
         self.epsilon = 1.0  # Epsilon start value
-        self.epsilonDecay = 0.9975  # Epsilon decay value
+        self.epsilonDecay = 0.99825  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
-        self.batchSize = 32  # Size of a miniBatch(64)
+        self.batchSize = 32  # Size of a miniBatch(32)
         self.learnStart = 100000  # Start to train model from this step(100000)
-        self.memory = deque(maxlen=200000)  # Main memory to keep batches
-        self.timeOutLim = 200  # Maximum step size for each episode(1400)
+        self.memory = deque(maxlen=500000)  # Main memory to keep batches
+        self.timeOutLim = 300  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path
 
         self.onlineModel = self.initNetwork()
@@ -257,12 +257,12 @@ if __name__ == '__main__':
         score = 0
         total_max_q = 0
 
-
+        t = time.time()
         
         for step in range(1,999999):
 
 
-            #leaderAgent.moveAgentRandomly()
+            leaderAgent.moveAgentCircle()
             #obstacleAgent1.moveAgentRandomly()
             #obstacleAgent2.moveAgentRandomly()
 
@@ -276,7 +276,7 @@ if __name__ == '__main__':
             nextState, reward, done = env.step(action)
 
 
-            if score+reward > 30000 or score+reward < -30000:
+            if score+reward > 20000 or score+reward < -20000:
                 print("Error Score is too high or too low! Resetting...")
                 break
 
@@ -290,6 +290,7 @@ if __name__ == '__main__':
 
             score += reward
             state = nextState
+
 
             avg_max_q_val_text = "Avg Max Q Val:{:.2f}  | ".format(np.max(agent.qValue))
             reward_text = "Reward:{:.2f}  | ".format(reward)
@@ -325,7 +326,7 @@ if __name__ == '__main__':
                 m, s = divmod(int(time.time() - startTime), 60)
                 h, m = divmod(m, 60)
 
-                print('Ep: {} | AvgMaxQVal: {:.2f} | CScore: {:.2f} | Mem: {} | Epsilon: {:.2f} | numOfCrashes: {:.2f} |Time: {}:{}:{}'.format(episode, avg_max_q, score, sys.getsizeof(agent.memory), agent.epsilon, env.numOfCrashes, env.numOfTargets, h, m, s))
+                print('Ep: {} | AvgMaxQVal: {:.2f} | CScore: {:.2f} | Mem: {} | Epsilon: {:.2f} | numOfCrashes: {:.2f} |numOfTargets: {:.2f} |Time: {}:{}:{}'.format(episode, avg_max_q, score, sys.getsizeof(agent.memory), agent.epsilon, env.numOfCrashes, env.numOfTargets, h, m, s))
                 
                 if LIVE_PLOT:
                     score_plot.update(episode, score, "Score", inform_text, updtScore=True)

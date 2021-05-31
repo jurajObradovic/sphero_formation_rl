@@ -399,12 +399,10 @@ class SpheroGymEnv():
             if (self.calcDistance(pos[0], pos[1], self.robotX, self.robotY) < self.minCrashRange):
                 self.isCrash = True;
 
-
-
         if self.isCrash:
             #Crashed
              rospy.logwarn("Crash!")
-             reward = -50.0
+             reward = -25.0
    #          done = True
              self.numOfCrashes += 1
              self.isCrash = False
@@ -421,10 +419,6 @@ class SpheroGymEnv():
             targetAngle = state[0]
             obstacleAngles = state[2:(len(self.obstaclePositions) + 2)]
             obstacleDistances = state[(len(self.obstaclePositions) + 2):]
-
-
- #           yawReward.append(-1)  # small negative reward for staying in place
- #           obstacleYawRewardForActions.append([-1] * len(obstacleAngles))
 
             for i in range(self.actionSize):
                  yawReward.append(self.calculateYawReward(targetAngle, i, 5.0))
@@ -446,50 +440,24 @@ class SpheroGymEnv():
             leaderReward = round(yawReward[action] * 5.0, 2) * distanceRate;
             obstacleReward = []
             for i, rewardYaw in enumerate(obstacleYawRewardForActions[action]): 
-                obstacleReward.append(round(rewardYaw * 0.3, 2 ) * obstacleDistanceRate[i])
+                obstacleReward.append(round(rewardYaw * 0.5, 2 ) * obstacleDistanceRate[i])
 
 
           #  print("leaderDistanceRate", distanceRate)
           #  print("obstacleDistanceRate:", -obstacleDistanceRate[0]);
-          #  print("obstacleReward: ", obstacleReward);
-           # print("leaderReward:", leaderReward);
-
-
+          #  print("obstacleReward: ", max(obstacleReward));
+          #  print("leaderReward:", leaderReward);
 
             if self.isTargetReached:
                 # Reached to target
                 rospy.logwarn("Reached to target!")
                 #reward = 250 - sum(obstacleReward)
-                reward = 100.0
+                reward = 50.0
                 self.isTargetReached = False
 
             else:
-                reward = leaderReward - sum(obstacleReward)
+                reward = leaderReward - max(obstacleReward)
 
-
-            def actionSwitchToString(i):
-                switcher = {
-                    0: "STAY",
-                    1: "FORWARD",
-                    2: "FORWARD-RIGHT",
-                    3: "RIGHT",
-                    4: "BACK-RIGHT",
-                    5: "BACK",
-                    6: "BACK-LEFT",
-                    7: "LEFT",
-                    8: "FOWARD-LEFT"
-                }
-
-                return switcher.get(i, "INVALID")
-
-            actionString = actionSwitchToString(action);
-
-        #print("reward: ", reward, "   action: ", actionString, "distanceToTarget: ", distanceToTarget)
-        #print("obstaclePositions: ", self.obstaclePositions);
-        #print("state:", self.targetPointX, self.targetPointY);    
-
-
-        #print("reward:", reward);
         return np.asarray(state), reward, done
 
     def reset(self):
