@@ -392,55 +392,54 @@ class SpheroGymEnv():
 
         if distanceToTarget < 0.3:  # Reached to target
             self.isTargetReached = True
-            self.numOfTargets += 1
+            
 
 
         for pos in self.obstaclePositions: #Crashed
             if (self.calcDistance(pos[0], pos[1], self.robotX, self.robotY) < self.minCrashRange):
                 self.isCrash = True;
 
-        if self.isCrash:
-            #Crashed
-             rospy.logwarn("Crash!")
-             reward = -25.0
-   #          done = True
-             self.numOfCrashes += 1
-             self.isCrash = False
-        else:
+   #      if self.isCrash:
+   #          #Crashed
+   #           rospy.logwarn("Crash!")
+   #           reward = -25.0
+   # #          done = True
+   #           self.numOfCrashes += 1
+   #           self.isCrash = False
+   #      else:
+
+        yawReward = []
+        obstacleYawReward = []
+        obstacleYawRewardForActions = [];
+        obstacleDistanceRate = []
 
 
-            yawReward = []
-            obstacleYawReward = []
-            obstacleYawRewardForActions = [];
-            obstacleDistanceRate = []
+        currentDistance = state[1]
+        targetAngle = state[0]
+        obstacleAngles = state[2:(len(self.obstaclePositions) + 2)]
+        obstacleDistances = state[(len(self.obstaclePositions) + 2):]
+
+        for i in range(self.actionSize):
+             yawReward.append(self.calculateYawReward(targetAngle, i, 5.0))
+             for obstacleAngle in obstacleAngles:
+                 obstacleYawReward.append(self.calculateYawReward(obstacleAngle, i, 3.0));
+             obstacleYawRewardForActions.append(obstacleYawReward);
+             obstacleYawReward = [];    
+
+        try:
+            distanceRate = 2 ** (currentDistance / self.targetDistance)
+        except Exception:
+            print("Overflow err CurrentDistance = ", currentDistance, " TargetDistance = ", self.targetDistance)
+            distanceRate = 2 ** (currentDistance // self.targetDistance)
 
 
-            currentDistance = state[1]
-            targetAngle = state[0]
-            obstacleAngles = state[2:(len(self.obstaclePositions) + 2)]
-            obstacleDistances = state[(len(self.obstaclePositions) + 2):]
-
-            for i in range(self.actionSize):
-                 yawReward.append(self.calculateYawReward(targetAngle, i, 5.0))
-                 for obstacleAngle in obstacleAngles:
-                     obstacleYawReward.append(self.calculateYawReward(obstacleAngle, i, 3.0));
-                 obstacleYawRewardForActions.append(obstacleYawReward);
-                 obstacleYawReward = [];    
-
-            try:
-                distanceRate = 2 ** (currentDistance / self.targetDistance)
-            except Exception:
-                print("Overflow err CurrentDistance = ", currentDistance, " TargetDistance = ", self.targetDistance)
-                distanceRate = 2 ** (currentDistance // self.targetDistance)
-
-
-            for i, distance in enumerate(obstacleDistances):
-                obstacleDistanceRate.append(2 ** ((self.obstacleDistancesAtReset[i] + 1) / (distance + 1)))
+        for i, distance in enumerate(obstacleDistances):
+            obstacleDistanceRate.append(2 ** ((self.obstacleDistancesAtReset[i] + 1) / (distance + 1)))
                 
-            leaderReward = round(yawReward[action] * 5.0, 2) * distanceRate;
-            obstacleReward = []
-            for i, rewardYaw in enumerate(obstacleYawRewardForActions[action]): 
-                obstacleReward.append(round(rewardYaw * 0.5, 2 ) * obstacleDistanceRate[i])
+        leaderReward = round(yawReward[action] * 7.0, 2) * distanceRate;
+        obstacleReward = []
+        for i, rewardYaw in enumerate(obstacleYawRewardForActions[action]): 
+            obstacleReward.append(round(rewardYaw * 1, 2 ) * obstacleDistanceRate[i])
 
 
           #  print("leaderDistanceRate", distanceRate)
@@ -448,15 +447,22 @@ class SpheroGymEnv():
           #  print("obstacleReward: ", max(obstacleReward));
           #  print("leaderReward:", leaderReward);
 
-            if self.isTargetReached:
-                # Reached to target
-                rospy.logwarn("Reached to target!")
-                #reward = 250 - sum(obstacleReward)
-                reward = 50.0
-                self.isTargetReached = False
 
-            else:
-                reward = leaderReward - max(obstacleReward)
+        if self.isCrash:  
+            rospy.logwarn("Crash!")
+            self.numOfCrashes += 1
+            self.isCrash = False
+
+        if self.isTargetReached:
+            # Reached to target
+            rospy.logwarn("Reached to target!")
+            #reward = 250 - sum(obstacleReward)
+            #reward = 50.0
+            self.numOfTargets += 1
+            self.isTargetReached = False
+
+        
+        reward = leaderReward - max(obstacleReward)
 
         return np.asarray(state), reward, done
 

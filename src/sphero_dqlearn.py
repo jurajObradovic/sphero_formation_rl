@@ -42,7 +42,7 @@ class Agent:
         self.epsilonDecay = 0.99825  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
         self.batchSize = 32  # Size of a miniBatch(32)
-        self.learnStart = 100000  # Start to train model from this step(100000)
+        self.learnStart = 10000  # Start to train model from this step(100000)
         self.memory = deque(maxlen=500000)  # Main memory to keep batches
         self.timeOutLim = 300  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path
@@ -276,7 +276,7 @@ if __name__ == '__main__':
             nextState, reward, done = env.step(action)
 
 
-            if score+reward > 20000 or score+reward < -20000:
+            if score+reward > 30000 or score+reward < -30000:
                 print("Error Score is too high or too low! Resetting...")
                 break
 
