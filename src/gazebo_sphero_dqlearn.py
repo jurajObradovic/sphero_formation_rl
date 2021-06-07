@@ -298,7 +298,7 @@ class SpheroGymEnv():
             obstacleAngle.append(self.calcAngle(obstacle[0], obstacle[1]))
                 
 
-
+        #print(self.obstaclePositions)
        # return [targetAngle, distance, obstacleMinRange, obstacleAngle], isCrash
 
         return [targetAngle, distance] + obstacleAngle + obstacleDistance 
@@ -434,18 +434,20 @@ class SpheroGymEnv():
 
 
         for i, distance in enumerate(obstacleDistances):
-            obstacleDistanceRate.append(2 ** ((self.obstacleDistancesAtReset[i] + 1) / (distance + 1)))
+            obstacleDistanceRate.append(2 ** ((self.obstacleDistancesAtReset[i] + 1.0) / (distance + 0.2)))
                 
         leaderReward = round(yawReward[action] * 7.0, 2) * distanceRate;
         obstacleReward = []
         for i, rewardYaw in enumerate(obstacleYawRewardForActions[action]): 
-            obstacleReward.append(round(rewardYaw * 1, 2 ) * obstacleDistanceRate[i])
+            obstacleReward.append(round(rewardYaw * 0.2, 2 ) * obstacleDistanceRate[i])
 
 
           #  print("leaderDistanceRate", distanceRate)
           #  print("obstacleDistanceRate:", -obstacleDistanceRate[0]);
-          #  print("obstacleReward: ", max(obstacleReward));
+        #print("obstacleReward: ", - max(obstacleReward));
           #  print("leaderReward:", leaderReward);
+        #print("obstacleDistanceMin: ", min(obstacleDistances))
+        #print ("obstacleDistanceReward: ", obstacleDistanceRate)
 
 
         if self.isCrash:  
@@ -458,11 +460,15 @@ class SpheroGymEnv():
             rospy.logwarn("Reached to target!")
             #reward = 250 - sum(obstacleReward)
             #reward = 50.0
+            additionalReward = 10;
             self.numOfTargets += 1
             self.isTargetReached = False
+            leaderReward = 50;
 
         
         reward = leaderReward - max(obstacleReward)
+
+
 
         return np.asarray(state), reward, done
 

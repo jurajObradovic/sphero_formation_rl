@@ -28,9 +28,9 @@ class Agent:
     '''
     
     def __init__(self, stateSize, actionSize):
-        self.isTrainActive = True # Train model (Make it False for just testing)
-        self.loadModel = False# Load model from file
-        self.loadEpisodeFrom = 0  # Load Xth episode from file
+        self.isTrainActive = False # Train model (Make it False for just testing)
+        self.loadModel = True# Load model from file
+        self.loadEpisodeFrom = 2710  # Load Xth episode from file
         self.episodeCount = 40000  # Total episodes
         self.stateSize = stateSize  # Step size get from env
         self.actionSize = actionSize  # Action size get from env
@@ -42,7 +42,7 @@ class Agent:
         self.epsilonDecay = 0.99825  # Epsilon decay value
         self.epsilonMin = 0.05  # Epsilon minimum value
         self.batchSize = 32  # Size of a miniBatch(32)
-        self.learnStart = 10000  # Start to train model from this step(100000)
+        self.learnStart = 250000  # Start to train model from this step(100000)
         self.memory = deque(maxlen=500000)  # Main memory to keep batches
         self.timeOutLim = 300  # Maximum step size for each episode(1400)
         self.savePath = '/tmp/spheroModel/'  # Model save path

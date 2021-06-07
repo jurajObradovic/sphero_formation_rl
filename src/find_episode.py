@@ -3,7 +3,7 @@
 import json
 import matplotlib.pyplot as plt
 
-num = 24;
+num = 27;
 
 f = open('/home/juraj/Desktop/Diplomski/LeaderFollow' + str(num) + '/leaderFollow' + str(num) +  '.json')
 data = json.load(f)
@@ -17,8 +17,8 @@ count = 0;
 worstBest = (numOfTargets[0], 0)
 
 for i in range(len(numOfCrashes)):
-	if(numOfCrashes[i] <= 30):
-		if(count < 1):
+	if(numOfCrashes[i] <= 20):
+		if(count < 3):
 			count += 1
 			bestFiveEpisodes.append((numOfTargets[i], i))
 			if(numOfTargets[i] <= worstBest[0]):

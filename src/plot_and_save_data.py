@@ -7,7 +7,7 @@
 import json
 import matplotlib.pyplot as plt
 
-finalEpisode = 1499;
+finalEpisode = 5956;
 scoreList = []
 epsilonList =  []
 memoryList = []
