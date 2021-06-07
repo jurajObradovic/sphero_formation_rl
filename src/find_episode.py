@@ -34,6 +34,9 @@ for i in range(len(numOfCrashes)):
 
 
 
+lista = [1,2,3]
+
+
 
 print(bestFiveEpisodes)
 

@@ -149,12 +149,15 @@ class SpheroGymEnv():
     Main Gazebo environment class
     Contains reset and step function
     '''
-    def __init__(self):
+    def __init__(self, agentNumber):
         # Initialize the node
-        rospy.init_node('sphero_gym_env', anonymous=True)
+
+        self.agentNumber = agentNumber
+        rospy.init_node("sphero_gym_env_{}", anonymous=True)
+
 
         # Connect to gazebo
-        self.velPub = rospy.Publisher('/sphero1/cmd_vel', Twist, queue_size=5)
+        self.velPub = rospy.Publisher("/sphero{}/cmd_vel".format(self.agentNumber), Twist, queue_size=5)
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.reset_proxy = rospy.ServiceProxy(
@@ -247,6 +250,9 @@ class SpheroGymEnv():
 
 
 
+    def getPosition(self):
+        return self.robotX, self.robotY
+        
     def calcAngle(self, x, y):
         '''
         Calculate angle from robot to target

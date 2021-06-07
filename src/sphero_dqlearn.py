@@ -30,7 +30,7 @@ class Agent:
     def __init__(self, stateSize, actionSize):
         self.isTrainActive = False # Train model (Make it False for just testing)
         self.loadModel = True# Load model from file
-        self.loadEpisodeFrom = 2710  # Load Xth episode from file
+        self.loadEpisodeFrom = 1860  # Load Xth episode from file
         self.episodeCount = 40000  # Total episodes
         self.stateSize = stateSize  # Step size get from env
         self.actionSize = actionSize  # Action size get from env
@@ -185,52 +185,63 @@ class LivePlot():
 def updateObstaclesPositions(obstacleAgents):
 
 
-    obastacleAgentPositions = []  
+    obstacleAgentPositions = []  
 
     for obstacleAgent in obstacleAgents: 
         obstaclePoitionX, obstaclePositionY = obstacleAgent.getPosition()
-        obastacleAgentPositions.append([obstaclePoitionX, obstaclePositionY])
+        obstacleAgentPositions.append([obstaclePoitionX, obstaclePositionY])
 
 
-    return obastacleAgentPositions
+    return obstacleAgentPositions
 
 
 if __name__ == '__main__':
     if LIVE_PLOT:
         score_plot = LivePlot()
 
+    #true if we want to generate formation
+    formation = True  
+
+    env = SpheroGymEnv(1)
+    envs = [env]
 
 
-    env = SpheroGymEnv()
     # get action and state sizes
     stateSize = env.stateSize
     actionSize = env.actionSize
 
     # Create an agent
     agent = Agent(stateSize, actionSize)
+    agents = [agent]
 
+    if(formation):
+        agent2 = Agent(stateSize, actionSize)
+        agent3 = Agent(stateSize, actionSize)
+        agents = [agent, agent2, agent3]
+        env2 = SpheroGymEnv(3)
+        env3 = SpheroGymEnv(4)
+        envs = [env, env2, env3]
+
+    else:    
+        obstacleAgent1 = SecondaryAgent(3);
+        obstacleAgent2 = SecondaryAgent(4);
 
     agentRandomPositionNumber = [1, 2, 3];
     
-
     leaderAgent = SecondaryAgent(2);
-    obstacleAgent1 = SecondaryAgent(3);
-    obstacleAgent2 = SecondaryAgent(4);
-
 
     # Load model from file if needed
-    if agent.loadModel:
-        agent.onlineModel.set_weights(load_model(agent.savePath+str(agent.loadEpisodeFrom)+".h5").get_weights())
+    for agent in agents:
+        if agent.loadModel:
+            agent.onlineModel.set_weights(load_model(agent.savePath+str(agent.loadEpisodeFrom)+".h5").get_weights())
 
-        with open(agent.savePath+str(agent.loadEpisodeFrom)+'.json') as outfile:
-            param = json.load(outfile)
-            agent.epsilon = param.get('epsilon')
-
+            with open(agent.savePath+str(agent.loadEpisodeFrom)+'.json') as outfile:
+                param = json.load(outfile)
+                agent.epsilon = param.get('epsilon')
 
     stepCounter = 0
     startTime = time.time()
     for episode in range(agent.loadEpisodeFrom + 1, agent.episodeCount):
-
 
         done = False
 
@@ -238,109 +249,134 @@ if __name__ == '__main__':
 
         random.shuffle(agentRandomPositionNumber);  #shuffle agent initial positions
         leaderAgent.agentRandomPositionNumber = agentRandomPositionNumber[0]
-        obstacleAgent1.agentRandomPositionNumber = agentRandomPositionNumber[1]
-        obstacleAgent2.agentRandomPositionNumber = agentRandomPositionNumber[2]
+        if (formation == False):
+            obstacleAgent1.agentRandomPositionNumber = agentRandomPositionNumber[1]
+            obstacleAgent2.agentRandomPositionNumber = agentRandomPositionNumber[2]
+            obstacleAgent1.respawn();
+            obstacleAgent2.respawn();
 
         leaderAgent.respawn();
-        obstacleAgent1.respawn();
-        obstacleAgent2.respawn();
+
+        if (formation):
+            envsTemp = envs.copy()
+            for i in range(len(envs)):
+                envsTemp.pop(i)
+                envs[i].obstaclePositions = updateObstaclesPositions([leaderAgent] +  envsTemp)
+                envs[i].targetPointX, envs[i].targetPointY = envs[i].obstaclePositions[0][0] + 0.3 * (1 + i), envs[i].obstaclePositions[0][1] + 0.5 * (1 + i)
+                envsTemp = envs.copy()
+        else: 
+            env.obstaclePositions =  updateObstaclesPositions([leaderAgent, obstacleAgent1, obstacleAgent2])
+            env.targetPointX, env.targetPointY = env.obstaclePositions[0][0] + 0.3, env.obstaclePositions[0][1] + 0.5
 
 
-        obstacleAgentPositions =  updateObstaclesPositions([leaderAgent, obstacleAgent1, obstacleAgent2])
-        env.targetPointX, env.targetPointY = obstacleAgentPositions[0][0] + 0.3, obstacleAgentPositions[0][1] + 0.5;
-
-
-        env.obstaclePositions = obstacleAgentPositions;
-
-        state = env.reset();
+        state = env.reset()
+        states = [state]
 
         score = 0
+        scores = [score]
         total_max_q = 0
+        total_max_qs = [total_max_q]
+
+        if (formation):
+            states = [state, env2.reset(), env3.reset()]
+            scores = [score, 0, 0]
+            total_max_qs = [total_max_q, 0, 0]
+
+
 
         t = time.time()
         
         for step in range(1,999999):
 
-
             leaderAgent.moveAgentCircle()
-            #obstacleAgent1.moveAgentRandomly()
-            #obstacleAgent2.moveAgentRandomly()
 
 
-            obstacleAgentPositions =  updateObstaclesPositions([leaderAgent, obstacleAgent1, obstacleAgent2])
-            env.targetPointX, env.targetPointY = obstacleAgentPositions[0][0] + 0.3, obstacleAgentPositions[0][1] + 0.5;
+            if(formation):
+                envsTemp = envs.copy()
+                for i in range(len(envs)):
+                    envsTemp.pop(i)
+                    envs[i].obstaclePositions = updateObstaclesPositions([leaderAgent] +  envsTemp)
+                    envs[i].targetPointX, envs[i].targetPointY = envs[i].obstaclePositions[0][0] + 0.3 * (1 + i), envs[i].obstaclePositions[0][1] + 0.5 * (1 + i)
+                    envsTemp = envs.copy()
+            else: 
 
+                env.obstaclePositions =  updateObstaclesPositions([leaderAgent, obstacleAgent1, obstacleAgent2])
+                env.targetPointX, env.targetPointY = env.obstaclePositions[0][0] + 0.3, env.obstaclePositions[0][1] + 0.5;
 
-            env.obstaclePositions = obstacleAgentPositions;
-            action = agent.calcAction(state)
-            nextState, reward, done = env.step(action)
+            for i in range(len(agents)):
+                action = agents[i].calcAction(states[i])
+                nextState, reward, done = envs[i].step(action)
 
+                if scores[i]+reward > 30000 or scores[i]+reward < -30000:
+                    print(i, ": Error Score is too high or too low! Resetting..." )
+                    break
 
-            if score+reward > 30000 or score+reward < -30000:
-                print("Error Score is too high or too low! Resetting...")
-                break
+                agents[i].appendMemory(states[i], action, reward, nextState, done)
 
-            agent.appendMemory(state, action, reward, nextState, done)
+                if agents[i].isTrainActive and len(agents[i].memory) >= agents[i].learnStart:
+                    if stepCounter <= agents[i].targetUpdateCount:
+                        agents[i].trainModel(False)
+                    else:
+                        agents[i].trainModel(True)
 
-            if agent.isTrainActive and len(agent.memory) >= agent.learnStart:
-                if stepCounter <= agent.targetUpdateCount:
-                    agent.trainModel(False)
-                else:
-                    agent.trainModel(True)
-
-            score += reward
-            state = nextState
-
-
-            avg_max_q_val_text = "Avg Max Q Val:{:.2f}  | ".format(np.max(agent.qValue))
-            reward_text = "Reward:{:.2f}  | ".format(reward)
-            action_text = "Action:{:.2f}  | ".format(action)
-
-            inform_text = avg_max_q_val_text + reward_text + action_text
+                scores[i] += reward
+                states[i] = nextState
             
-            if LIVE_PLOT:
-                score_plot.update(episode, score, "Score", inform_text, updtScore=False)
+
+                avg_max_q_val_text = "Avg Max Q Val:{:.2f}  | ".format(np.max(agents[i].qValue))
+                reward_text = "Reward:{:.2f}  | ".format(reward)
+                action_text = "Action:{:.2f}  | ".format(action)
+
+                inform_text = avg_max_q_val_text + reward_text + action_text
+            
+                if LIVE_PLOT:
+                    score_plot.update(episode, scores[i], "Score", inform_text, updtScore=False)
             
             # Save model to file
-            if agent.isTrainActive and episode % agent.saveModelAtEvery == 0:
-                weightsPath = agent.savePath + str(episode) + '.h5'
-                paramPath = agent.savePath + str(episode) + '.json'
-                agent.onlineModel.save(weightsPath)
-                env.numOfCrashes = 0;
-                env.numOfTargets = 0;
-                with open(paramPath, 'w') as outfile:
-                    json.dump(paramDictionary, outfile)
+                if agents[i].isTrainActive and episode % agents[i].saveModelAtEvery == 0:
+                    weightsPath = agents[i].savePath + str(episode) + '.h5'
+                    paramPath = agents[i].savePath + str(episode) + '.json'
+                    agents[i].onlineModel.save(weightsPath)
+                    envs[i].numOfCrashes = 0;
+                    envs[i].numOfTargets = 0;
+                    with open(paramPath, 'w') as outfile:
+                        json.dump(paramDictionary, outfile)
 
-            total_max_q += np.max(agent.qValue)
+                total_max_qs[i] += np.max(agents[i].qValue)
 
-            if (step >= agent.timeOutLim):
-                print("Time out")
-                done = True
+                if (step >= agents[i].timeOutLim):
+                    print("Time out")
+                    done = True
 
-            if done:
-                agent.updateTargetModel()
+                if done:
+                    agents[i].updateTargetModel()
 
-                avg_max_q = total_max_q / step
+                    avg_max_q = total_max_qs[i] / step
 
-                # Infor user
-                m, s = divmod(int(time.time() - startTime), 60)
-                h, m = divmod(m, 60)
+                    # Infor user
+                    m, s = divmod(int(time.time() - startTime), 60)
+                    h, m = divmod(m, 60)
 
-                print('Ep: {} | AvgMaxQVal: {:.2f} | CScore: {:.2f} | Mem: {} | Epsilon: {:.2f} | numOfCrashes: {:.2f} |numOfTargets: {:.2f} |Time: {}:{}:{}'.format(episode, avg_max_q, score, sys.getsizeof(agent.memory), agent.epsilon, env.numOfCrashes, env.numOfTargets, h, m, s))
-                
-                if LIVE_PLOT:
-                    score_plot.update(episode, score, "Score", inform_text, updtScore=True)
+                    print('Ep: {} | AvgMaxQVal: {:.2f} | CScore: {:.2f} | Mem: {} | Epsilon: {:.2f} | numOfCrashes: {:.2f} |numOfTargets: {:.2f} |Time: {}:{}:{}'.format(episode, avg_max_q, score, sys.getsizeof(agent.memory), agent.epsilon, env.numOfCrashes, env.numOfTargets, h, m, s))
+                    
+                    if LIVE_PLOT:
+                        score_plot.update(episode, scores[i], "Score", inform_text, updtScore=True)
 
-                paramKeys = ['epsilon', 'score', 'memory', 'time', 'averageQ', 'numOfCrashes', 'numOfTargets']
-                paramValues = [agent.epsilon, score, len(agent.memory), h, avg_max_q, env.numOfCrashes, env.numOfTargets]
-                paramDictionary = dict(zip(paramKeys, paramValues))
-                break
+                    paramKeys = ['epsilon', 'score', 'memory', 'time', 'averageQ', 'numOfCrashes', 'numOfTargets']
+                    paramValues = [agents[i].epsilon, score, len(agents[i].memory), h, avg_max_q, envs[i].numOfCrashes, envs[i].numOfTargets]
+                    paramDictionary = dict(zip(paramKeys, paramValues))
+                    break
 
-            stepCounter += 1
-            if stepCounter % agent.targetUpdateCount == 0:
-                agent.updateTargetModel()
+                stepCounter += 1
+                if stepCounter % agents[i].targetUpdateCount == 0:
+             
+                    agents[i].updateTargetModel()
+            else: 
+                continue
+            break
 
         # Epsilon decay
-        if agent.epsilon > agent.epsilonMin:
-            agent.epsilon *= agent.epsilonDecay
+        for agent in agents:      
+            if agent.epsilon > agent.epsilonMin:
+                agent.epsilon *= agent.epsilonDecay
 
